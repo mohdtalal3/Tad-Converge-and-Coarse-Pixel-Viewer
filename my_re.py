@@ -765,87 +765,76 @@ def update_output(selected_tool, time_filters, recipe_filters, lot_filters, phas
     if stats_filters:
         filtered_df = filtered_df[filtered_df['Stats'].isin(stats_filters)]
 
-    # Calculate the custom fit line for TIS_X vs DAD_Pos_X
-    if not filtered_df['TIS_X'].empty and not filtered_df['DAD_Pos_X'].empty:
-        x = filtered_df['TIS_X'].astype(float)
-        y = filtered_df['DAD_Pos_X'].astype(float)
-        slope_x = filtered_df['Slope_X'].mean() if 'Slope_X' in filtered_df else 0
-        intercept_x = filtered_df['B_X'].mean() if 'B_X' in filtered_df else 0
+    if not filtered_df.empty and all(col in filtered_df.columns for col in ['TIS_X', 'DAD_Pos_X', 'Slope_X', 'B_X', 'TIS_Y', 'DAD_Pos_Y', 'Slope_Y', 'B_Y']):
         
-        # Custom line with slope of -1000.0 * Slope_X
-        custom_slope_x = -1000.0 * slope_x
-        fit_line_x = custom_slope_x * x + intercept_x
-        
-    else:
-        fit_line_x = []
-
-    # Create TIS X vs DAD Position X figure
-    tis_x_vs_dad_x_figure = {
-        'data': [
-            go.Scatter(
-                x=filtered_df['TIS_X'].astype(float),
-                y=filtered_df['DAD_Pos_X'].astype(float),
-                mode='markers',
-                name='Data',
-                marker=dict(
-                    color=['red' if (y > 15 and y < 20) else 'blue' for y in filtered_df['DAD_Pos_X']] # Change these values according to your need Contols red color in graph 
+        def create_lines(df, x_col, y_col, slope_col, intercept_col, color_condition):
+            lines = []
+            for i in range(len(df)):
+                x_start = df[x_col].iloc[i]
+                y_start = df[intercept_col].iloc[i]
+                slope = df[slope_col].iloc[i]
+                color = 'red' if color_condition(y_start) else 'blue'
+                
+                custom_slope = -1000.0 * slope
+                
+                length = 15
+                x_end_pos = x_start + length
+                y_end_pos = y_start + custom_slope * (x_end_pos - x_start)
+                
+                x_end_neg = x_start - length
+                y_end_neg = y_start + custom_slope * (x_end_neg - x_start)
+                
+                lines.append(
+                    go.Scatter(
+                        x=[x_end_neg, x_start, x_end_pos],
+                        y=[y_end_neg, y_start, y_end_pos],
+                        mode='lines',
+                        line=dict(color=color),
+                        showlegend=False
+                    )
                 )
-            ),
-            go.Scatter(
-                x=filtered_df['TIS_X'].astype(float),
-                y=fit_line_x,
-                mode='lines',
-                name='Custom Fit Line',
-                line=dict(color='red')
-            )
-        ],
-        'layout': {
-            'title': 'TIS X vs DAD Position X',
-            'xaxis': {'title': 'TIS X'},
-            'yaxis': {'title': 'DAD Position X'}
-        }
-    }
+            return lines
 
-    # Calculate the custom fit line for TIS_Y vs DAD_Pos_Y
-    if not filtered_df['TIS_Y'].empty and not filtered_df['DAD_Pos_Y'].empty:
-        y = filtered_df['TIS_Y'].astype(float)
-        x = filtered_df['DAD_Pos_Y'].astype(float)
-        slope_y = filtered_df['Slope_Y'].mean() if 'Slope_Y' in filtered_df else 0
-        intercept_y = filtered_df['B_Y'].mean() if 'B_Y' in filtered_df else 0
-        
-        # Custom line with slope of -1000.0 * Slope_Y
-        custom_slope_y = -1000.0 * slope_y
-        fit_line_y = custom_slope_y * y + intercept_y
-        
-    else:
-        fit_line_y = []
-
-    # Create TIS Y vs DAD Position Y figure
-    tis_y_vs_dad_y_figure = {
-        'data': [
-            go.Scatter(
-                x=filtered_df['TIS_Y'].astype(float),
-                y=filtered_df['DAD_Pos_Y'].astype(float),
-                mode='markers',
-                name='Data',
-                marker=dict(
-                    color=['red' if (y > 15 and y < 20) else 'blue' for y in filtered_df['DAD_Pos_Y']]  # Change these values according to your need Contols red color in graph
+        lines_x = create_lines(filtered_df, 'TIS_X', 'DAD_Pos_X', 'Slope_X', 'B_X', lambda y: 15 < y < 20)
+        tis_x_vs_dad_x_figure = {
+            'data': [
+                go.Scatter(
+                    x=filtered_df['TIS_X'].astype(float),
+                    y=filtered_df['DAD_Pos_X'].astype(float),
+                    mode='markers',
+                    name='Data',
+                    marker=dict(
+                        color=['red' if (y > 15 and y < 20) else 'blue' for y in filtered_df['DAD_Pos_X']]
+                    )
                 )
-            ),
-            go.Scatter(
-                x=filtered_df['TIS_Y'].astype(float),
-                y=fit_line_y,
-                mode='lines',
-                name='Custom Fit Line',
-                line=dict(color='red')
-            )
-        ],
-        'layout': {
-            'title': 'TIS Y vs DAD Position Y',
-            'xaxis': {'title': 'TIS Y'},
-            'yaxis': {'title': 'DAD Position Y'}
+            ] + lines_x,
+            'layout': {
+                'title': 'TIS X vs DAD Position X',
+                'xaxis': {'title': 'TIS X'},
+                'yaxis': {'title': 'DAD Position X'}
+            }
         }
-    }
+
+
+        lines_y = create_lines(filtered_df, 'TIS_Y', 'DAD_Pos_Y', 'Slope_Y', 'B_Y', lambda y: 15 < y < 20)
+        tis_y_vs_dad_y_figure = {
+            'data': [
+                go.Scatter(
+                    x=filtered_df['TIS_Y'].astype(float),
+                    y=filtered_df['DAD_Pos_Y'].astype(float),
+                    mode='markers',
+                    name='Data',
+                    marker=dict(
+                        color=['red' if (y > 15 and y < 20) else 'blue' for y in filtered_df['DAD_Pos_Y']]
+                    )
+                )
+            ] + lines_y,
+            'layout': {
+                'title': 'TIS Y vs DAD Position Y',
+                'xaxis': {'title': 'TIS Y'},
+                'yaxis': {'title': 'DAD Position Y'}
+            }
+        }
 
     # Update table with tool number and highlight cells
     filtered_df.insert(0, 'Tool Number', selected_tool)  # Add tool number column at the beginning
