@@ -5,10 +5,11 @@ from dash import dcc, html, Input, Output, dash_table
 import dash_bootstrap_components as dbc
 import sqlite3
 import plotly.graph_objs as go
-# Directory where your database files are located
-DATA_DIR = r'./'
+# Directories for Coarse Pixel and TAD data
+COARSE_PIXEL_DIR = r'./coarse_pixel/'
+TAD_DIR = r'./tad/'
 
-# Function to get the list of tool numbers from the directory
+# Function to get the list of tool numbers from a directory
 def get_tool_numbers(data_dir):
     tool_numbers = []
     for filename in os.listdir(data_dir):
@@ -17,10 +18,10 @@ def get_tool_numbers(data_dir):
             tool_numbers.append(tool_number)
     return tool_numbers
 
+# Function to load coarse data from a specific tool's database file
 def load_coarse_data(tool_number):
-    file_path = os.path.join(DATA_DIR, f'Tool_{tool_number}.db')
+    file_path = os.path.join(COARSE_PIXEL_DIR, f'Tool_{tool_number}.db')
     if os.path.exists(file_path):
-        # Load data from the database file
         conn = sqlite3.connect(file_path)
         query = """
         SELECT
@@ -33,27 +34,26 @@ def load_coarse_data(tool_number):
         conn.close()
         return df
     else:
-        return pd.DataFrame()  # Return an empty DataFrame if the DB does not exist
+        return pd.DataFrame()
 
-
-# Function to load data from a specific tool's database file
+# Function to load TAD data from a specific tool's database file
 def load_tad_data(tool_number):
-    file_path = os.path.join(DATA_DIR, f'Tool_{tool_number}.db')
+    file_path = os.path.join(TAD_DIR, f'Tool_{tool_number}.db')
     if os.path.exists(file_path):
-        # Load data from the database file
         conn = sqlite3.connect(file_path)
         query = "SELECT * FROM Tad_Data"
         df = pd.read_sql_query(query, conn)
         conn.close()
         return df
     else:
-        return pd.DataFrame()  # Return an empty DataFrame if the DB does not exist
+        return pd.DataFrame()
 
 # Initialize the Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
-# Get the list of tool numbers
-tool_numbers = get_tool_numbers(DATA_DIR)
+# Get the list of tool numbers for both Coarse Pixel and TAD
+coarse_pixel_tool_numbers = get_tool_numbers(COARSE_PIXEL_DIR)
+tad_tool_numbers = get_tool_numbers(TAD_DIR)
 
 # Define the layout of the app
 app.layout = dbc.Tabs([
@@ -104,9 +104,9 @@ app.layout = dbc.Tabs([
                 html.Div([
                     html.Label("Select Tool Number:"),
                     dcc.Dropdown(
-                        id='tool-number-dropdown',
-                        options=[{'label': str(tool), 'value': tool} for tool in tool_numbers],
-                        value=tool_numbers[0] if tool_numbers else None,
+                        id='tool-number-dropdown-coarse',
+                        options=[{'label': str(tool), 'value': tool} for tool in coarse_pixel_tool_numbers],
+                        value=coarse_pixel_tool_numbers[0] if coarse_pixel_tool_numbers else None,
                         style={'width': '150px'}
                     ),
                 ], style={'marginBottom': 0}),
@@ -210,9 +210,9 @@ app.layout = dbc.Tabs([
                 html.Div([
                     html.Label("Select Tool Number:"),
                     dcc.Dropdown(
-                        id='tool-number-dropdown_tad',
-                        options=[{'label': str(tool), 'value': tool} for tool in tool_numbers],
-                        value=tool_numbers[0] if tool_numbers else None,
+                        id='tool-number-dropdown-tad',
+                        options=[{'label': str(tool), 'value': tool} for tool in tad_tool_numbers],
+                        value=tad_tool_numbers[0] if tad_tool_numbers else None,
                         style={'width': '150px'}
                     ),
                 ], style={'marginBottom': 10}),
@@ -397,7 +397,7 @@ app.layout = dbc.Tabs([
      Output('filter-static-iteration', 'options'),
      Output('filter-orientation', 'options'),
      Output('filter-site-serial-number', 'options')],
-    [Input('tool-number-dropdown', 'value'),
+    [Input('tool-number-dropdown-coarse', 'value'),
      Input('filter-x-pass-fail', 'value'),
      Input('filter-y-pass-fail', 'value'),
      Input('filter-time', 'value'),
@@ -451,7 +451,7 @@ def set_coarse_filters(tool_number, x_pass_fail_filters, y_pass_fail_filters, ti
      Output('x-vs-time-plot', 'figure'),
      Output('y-vs-time-plot', 'figure'),
      Output('table-container', 'children')],
-    [Input('tool-number-dropdown', 'value'),
+    [Input('tool-number-dropdown-coarse', 'value'),
      Input('filter-x-pass-fail', 'value'),
      Input('filter-y-pass-fail', 'value'),
      Input('filter-time', 'value'),
@@ -667,7 +667,7 @@ def set_tad_filters(tool_number, time_filters, recipe_filters, lot_filters, phas
      Output('filter-b-y', 'options'),
      Output('filter-exit-reason', 'options'),
      Output('filter-stats', 'options')],
-    [Input('tool-number-dropdown_tad', 'value'),
+    [Input('tool-number-dropdown-tad', 'value'),
      Input('filter-time_tad', 'value'),
      Input('filter-recipe', 'value'),
      Input('filter-lot_tad', 'value'),
@@ -697,7 +697,7 @@ def update_tad_filter_options(tool_number, time_filters, recipe_filters, lot_fil
     [Output('tis-x-vs-dad-x-plot', 'figure'),
      Output('tis-y-vs-dad-y-plot', 'figure'),
      Output('table-container_tad', 'children')],
-    [Input('tool-number-dropdown_tad', 'value'),
+    [Input('tool-number-dropdown-tad', 'value'),
      Input('filter-time_tad', 'value'),
      Input('filter-recipe', 'value'),
      Input('filter-lot_tad', 'value'),
