@@ -44,6 +44,10 @@ def load_tad_data(tool_number):
         query = "SELECT * FROM Tad_Data"
         df = pd.read_sql_query(query, conn)
         conn.close()
+        columns_to_drop = [col for col in df.columns if col.lower() == 'treat' or col == 'Treat']
+        if columns_to_drop:
+            df = df.drop(columns=columns_to_drop)
+        
         return df
     else:
         return pd.DataFrame()
